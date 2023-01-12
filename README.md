@@ -1,4 +1,12 @@
+# How to use
+Hi! To use this API you will need to:
+ - Composer install
+ - Create env file with your database
+ - php bin/console doctrine:database:create
+ - php bin/console starwars import
 
+
+# History
 
 ## Command creation
 We make the command, following the symfony documentation.

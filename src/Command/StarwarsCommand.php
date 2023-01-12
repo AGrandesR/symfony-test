@@ -62,7 +62,7 @@ class StarwarsCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function importCharacters(int $number=3) : bool {
+    private function importCharacters(int $number=30) : bool {
         //We will get the star wars characters
         $curl = curl_init();
 

@@ -43,11 +43,11 @@ class StarwarsCommand extends Command
         if ($arg1 == 'import') {
             //$io->note(sprintf('You passed an argument: %s', $arg1));
             try{
-                $this->importCharacters();
+                $success = $this->importCharacters();
             } catch(Exception $e) {
                 $io->error($e->getMessage() . "| fl:" . $e->getFile() ."ln: " . $e->getLine());
             }
-            $io->success('@TODO');
+            $success ? $io->success('The characters are now in our database') : $io->error('Something goes wrong');
         } else {
             $io->error("The argument $arg1 does not exist. Please use a correct one. Use --help to get more information.");
         }
@@ -106,6 +106,6 @@ class StarwarsCommand extends Command
             $em->persist($character);
             $em->flush();
         }
-        return false;
+        return true;
     }
 }

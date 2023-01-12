@@ -65,37 +65,13 @@ class StarwarsCommand extends Command
     }
 
     private function importMovies() : bool {
-        //We will get the star wars characters
-        $curl = curl_init();
-
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://swapi.dev/api/films/',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-        ));
-        //region for curl call
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-        //endregion
-        $response = curl_exec($curl);
-        $ce= curl_error($curl);
-        if($ce) {
-            //@TODO: Throw a notification to IT department, with the $ce message
-            return false;
-        }
-        curl_close($curl);
-
-        $data = json_decode($response, true);
+        //We will get the star wars movies
+        $data = $this->callApi('films');   
 
         if(!is_array($data) || empty($data)) return false; //@TODO: Throw a notification to IT department, probably the api is death! : (
 
         $em = $this->doctrine->getManager();
-        foreach ($data['results'] as $filmData) {
+        foreach ($data as $filmData) {
             $movie = new Movies();
             $movie->setName($filmData['title']);
 
@@ -106,66 +82,22 @@ class StarwarsCommand extends Command
     }
 
     private function importCharacters(int $number=30) : bool {
+        $page=1;
         //We will get the star wars characters
-        $curl = curl_init();
-
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://swapi.dev/api/people/',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-        ));
-        //region for curl call
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-        //endregion
-        $response = curl_exec($curl);
-        $ce= curl_error($curl);
-        if($ce) {
-            //@TODO: Throw a notification to IT department, with the $ce message
-            return false;
-        }
-        curl_close($curl);
-
-        $data = json_decode($response, true);
+        $data = $this->callApi('people', $page);
 
         if(!is_array($data) || empty($data)) return false; //@TODO: Throw a notification to IT department, probably the api is death! : (
 
         $em = $this->doctrine->getManager();
         for ($count=0; $count < $number; $count++) {
-            if(!isset($data['results'][$count])) {
-                //this will mean that the characters are out
-                $curl = curl_init();
+            if(!isset($data[$count])) {
+                $extraData = $this->callApi('people', ++$page);
 
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => 'https://swapi.dev/api/people/',
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => 'GET',
-                ));
-                //region for curl call
-                curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-                //endregion
-                $response = curl_exec($curl);
-                $ce= curl_error($curl);
-                if($ce) {
-                    //@TODO: Throw a notification to IT department, with the $ce message
-                    return false;
-                }
-                curl_close($curl);
+                if(!is_array($data) || empty($data)) return false; //@TODO: Throw a notification to IT department, probably the api is death! : (
 
-                $data['results'] = array_merge($data['results'],json_decode($response, true)['results']);
+                $data = array_merge($data,$extraData);
             }
-            $characterData=$data['results'][$count];
+            $characterData=$data[$count];
 
             $character = new Characters();
             $character->setName($characterData['name']);
@@ -179,7 +111,31 @@ class StarwarsCommand extends Command
         }
         return true;
     }
-    private function getCharacters() {
-        
+    private function callApi(string $param, $page=1) {
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://swapi.dev/api/$param/?page=$page",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+        ));
+        //region for curl call
+        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+        //endregion
+        $response = curl_exec($curl);
+        $ce= curl_error($curl);
+        if($ce) {
+            //@TODO: Throw a notification to IT department, with the $ce message
+            return false;
+        }
+        curl_close($curl);
+
+        return json_decode($response, true)['results'];
     }
 }

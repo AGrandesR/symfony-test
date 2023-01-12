@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Entity\Characters;
+use App\Entity\Movies;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -43,6 +44,7 @@ class StarwarsCommand extends Command
         if ($arg1 == 'import') {
             //$io->note(sprintf('You passed an argument: %s', $arg1));
             try{
+                $success = $this->importMovies();
                 $success = $this->importCharacters();
             } catch(Exception $e) {
                 $io->error($e->getMessage() . "| fl:" . $e->getFile() ."ln: " . $e->getLine());
@@ -60,6 +62,47 @@ class StarwarsCommand extends Command
         
 
         return Command::SUCCESS;
+    }
+
+    private function importMovies() : bool {
+        //We will get the star wars characters
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => 'https://swapi.dev/api/films/',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+        ));
+        //region for curl call
+        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+        //endregion
+        $response = curl_exec($curl);
+        $ce= curl_error($curl);
+        if($ce) {
+            //@TODO: Throw a notification to IT department, with the $ce message
+            return false;
+        }
+        curl_close($curl);
+
+        $data = json_decode($response, true);
+
+        if(!is_array($data) || empty($data)) return false; //@TODO: Throw a notification to IT department, probably the api is death! : (
+
+        $em = $this->doctrine->getManager();
+        foreach ($data['results'] as $filmData) {
+            $movie = new Movies();
+            $movie->setName($filmData['title']);
+
+            $em->persist($movie);
+            $em->flush();
+        }
+        return true;
     }
 
     private function importCharacters(int $number=30) : bool {
@@ -94,6 +137,34 @@ class StarwarsCommand extends Command
 
         $em = $this->doctrine->getManager();
         for ($count=0; $count < $number; $count++) {
+            if(!isset($data['results'][$count])) {
+                //this will mean that the characters are out
+                $curl = curl_init();
+
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => 'https://swapi.dev/api/people/',
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 0,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                ));
+                //region for curl call
+                curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+                //endregion
+                $response = curl_exec($curl);
+                $ce= curl_error($curl);
+                if($ce) {
+                    //@TODO: Throw a notification to IT department, with the $ce message
+                    return false;
+                }
+                curl_close($curl);
+
+                $data['results'] = array_merge($data['results'],json_decode($response, true)['results']);
+            }
             $characterData=$data['results'][$count];
 
             $character = new Characters();
@@ -107,5 +178,8 @@ class StarwarsCommand extends Command
             $em->flush();
         }
         return true;
+    }
+    private function getCharacters() {
+        
     }
 }

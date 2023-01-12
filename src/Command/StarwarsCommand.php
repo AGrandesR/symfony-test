@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Entity\Characters;
 use App\Entity\Movies;
+use App\Entity\MoviesCharacters;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -105,9 +106,19 @@ class StarwarsCommand extends Command
             $character->setHeight(intval($characterData['height']));
             $character->setGender($characterData['gender']);
             $character->setPicture(''); //The api don'give to us any picture
-
             $em->persist($character);
             $em->flush();
+
+
+            foreach($characterData['films'] as $film) {
+                $movieCharacter = new MoviesCharacters();
+                $movieCharacter->setMovieId($film[strlen($film)-2]);
+                $movieCharacter->setCharacterId($character->getId());
+
+                $em->persist($movieCharacter);
+                $em->flush();
+            }
+
         }
         return true;
     }
